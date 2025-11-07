@@ -6,7 +6,7 @@ pipeline {
         AWS_DEFAULT_REGION = 'ap-south-1'       // Change if using a different AWS region
         ECR_REPO = 'flask-prediction-api'       // Your AWS ECR repository name
         IMAGE_TAG = "v${BUILD_NUMBER}"          // Auto increments on every Jenkins build
-        ECR_URI = "123456789012.dkr.ecr.ap-south-1.amazonaws.com/${ECR_REPO}" // Replace with your AWS account ID
+        ECR_URI = "331174145079.dkr.ecr.ap-south-1.amazonaws.com/flask-prediction-api" // Replace with your AWS account ID
     }
 
     stages {
@@ -21,14 +21,14 @@ pipeline {
         // 2️⃣ Train ML Model
         stage('Train Model') {
             steps {
-                sh 'python app/train_model.py'
+                bat 'python app/train_model.py'
             }
         }
 
         // 3️⃣ Build Docker Image
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $ECR_REPO:$IMAGE_TAG .'
+                bat 'docker build -t $ECR_REPO:$IMAGE_TAG .'
             }
         }
 
@@ -36,7 +36,7 @@ pipeline {
         stage('Login to ECR') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                    sh '''
+                    bat '''
                     aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_URI
                     '''
                 }
@@ -46,7 +46,7 @@ pipeline {
         // 5️⃣ Push Docker Image to AWS ECR
         stage('Push Image to ECR') {
             steps {
-                sh '''
+                bat '''
                 docker tag $ECR_REPO:$IMAGE_TAG $ECR_URI:$IMAGE_TAG
                 docker push $ECR_URI:$IMAGE_TAG
                 '''
@@ -58,7 +58,7 @@ pipeline {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                     dir('terraform') {
-                        sh '''
+                        bat '''
                         terraform init
                         terraform apply -auto-approve \
                             -var="image_tag=$IMAGE_TAG" \
