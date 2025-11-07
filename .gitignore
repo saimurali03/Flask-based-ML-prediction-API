@@ -1,0 +1,17 @@
+# Terraform local files
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+
+# Python
+__pycache__/
+*.pkl
+*.pyc
+
+# Credentials
+*.pem
+
+# Docker logs / temp
+*.log
+*.env
