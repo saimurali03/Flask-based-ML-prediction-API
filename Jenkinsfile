@@ -95,19 +95,18 @@ pipeline {
         // 8️⃣ Deploy Infrastructure via Terraform
         stage('Deploy with Terraform') {
             steps {
-                dir("${TF_DIR}") {
-                    bat """
-                        echo  Initializing Terraform...
-                        terraform init
-
-                        echo  Applying Terraform Deployment...
-                        terraform apply -auto-approve ^
-                            -var="image_tag=%IMAGE_TAG%" ^
-                            -var="ecr_uri=%ECR_URL%"
-                    """
-                }
+                bat '''
+                echo Initializing Terraform...
+                cd terraform
+                terraform init -no-color
+                echo Applying Terraform Deployment...
+                terraform apply -auto-approve -no-color ^
+                    -var="image_tag=%IMAGE_TAG%" ^
+                    -var="ecr_uri=%ECR_URL%"
+                '''
             }
         }
+
     }
 
     post {
