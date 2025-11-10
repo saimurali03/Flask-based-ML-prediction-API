@@ -91,22 +91,20 @@ pipeline {
                 """
             }
         }
-
         // 8️⃣ Deploy Infrastructure via Terraform
         stage('Deploy with Terraform') {
             steps {
-                bat '''
-                echo Initializing Terraform...
-                cd terraform
-                terraform init -no-color
-                echo Applying Terraform Deployment...
-                terraform apply -auto-approve -no-color ^
-                    -var="image_tag=%IMAGE_TAG%" ^
-                    -var="ecr_uri=%ECR_URL%"
-                '''
+                dir('terraform') {
+                    bat '''
+                    echo Initializing Terraform...
+                    terraform init -no-color
+
+                    echo Applying Terraform Deployment...
+                    terraform apply -auto-approve -no-color -var "image_tag=%IMAGE_TAG%" -var "ecr_uri=%ECR_URL%"
+                    '''
+                }
             }
         }
-
     }
 
     post {
