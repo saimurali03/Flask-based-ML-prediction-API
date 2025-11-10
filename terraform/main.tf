@@ -1,36 +1,21 @@
+#########################################
+# ✅ MAIN CONFIGURATION FOR FLASK ML API
+#########################################
+
 provider "aws" {
-  region = var.region
+  region = var.aws_region
 }
 
-# Create an EC2 instance
-resource "aws_instance" "flask_ec2" {
-  ami           = "ami-0305d3d91b9f22e84" 
-  instance_type = "t3.micro"
-  key_name      = var.key_name
+#########################################
+# ✅ Security Group for Flask App
+#########################################
 
-  # EC2 User Data to install Docker and run container
-  user_data = <<-EOF
-              #!/bin/bash
-              sudo apt update -y
-              sudo apt install docker.io -y
-              sudo systemctl start docker
-              sudo systemctl enable docker
-              sudo docker run -d -p 5000:5000 ${var.ecr_uri}:${var.image_tag}
-              EOF
-
-  tags = {
-    Name = "FlaskMLApp"
-  }
-}
-
-# Security group to allow HTTP (5000) and SSH access
 resource "aws_security_group" "flask_sg" {
-  name        = "flask-app-sg"
-  description = "Allow inbound HTTP (5000) and SSH"
-  vpc_id      = data.aws_vpc.default.id
+  name        = "flask_ml_api_sg"
+  description = "Allow inbound HTTP (5000) and SSH (22) access"
 
   ingress {
-    description = "Flask App Port"
+    description = "Flask app port"
     from_port   = 5000
     to_port     = 5000
     protocol    = "tcp"
@@ -38,7 +23,7 @@ resource "aws_security_group" "flask_sg" {
   }
 
   ingress {
-    description = "SSH"
+    description = "SSH access"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -46,6 +31,7 @@ resource "aws_security_group" "flask_sg" {
   }
 
   egress {
+    description = "Allow all outbound traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -53,17 +39,37 @@ resource "aws_security_group" "flask_sg" {
   }
 
   tags = {
-    Name = "FlaskAppSG"
+    Name = "FlaskMLAppSecurityGroup"
   }
 }
 
-# Attach security group to EC2
-resource "aws_network_interface_sg_attachment" "sg_attachment" {
-  security_group_id    = aws_security_group.flask_sg.id
-  network_interface_id = aws_instance.flask_ec2.primary_network_interface_id
-}
+#########################################
+# ✅ EC2 Instance for Flask Docker Container
+#########################################
 
-# Fetch default VPC for the security group
-data "aws_vpc" "default" {
-  default = true
+resource "aws_instance" "flask_ec2" {
+  ami           = "ami-0305d3d91b9f22e84" # Ubuntu 20.04 (Check region AMI)
+  instance_type = "t3.micro"
+  key_name      = var.key_name
+
+  vpc_security_group_ids = [aws_security_group.flask_sg.id]
+
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt update -y
+              sudo apt install docker.io -y
+              sudo systemctl start docker
+              sudo systemctl enable docker
+
+              # Login to AWS ECR
+              aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
+
+              # Pull latest Docker image from ECR and run Flask app
+              docker pull ${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${var.repo_name}:${var.image_tag}
+              docker run -d -p 5000:5000 ${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${var.repo_name}:${var.image_tag}
+              EOF
+
+  tags = {
+    Name = "Flask-ML-Prediction-API"
+  }
 }

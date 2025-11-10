@@ -1,17 +1,28 @@
-variable "region" {
-  default = "ap-south-1"
+#########################################
+# ✅ VARIABLES FILE FOR FLASK ML API
+#########################################
+
+variable "aws_region" {
+  description = "AWS region to deploy resources"
+  default     = "ap-south-1"
 }
 
-variable "key_name" {
-  description = "Name of your AWS EC2 key pair"
-  default     = "flask-keypair"  # 🔹 Replace this with your actual key pair name
+variable "aws_account_id" {
+  description = "AWS account ID for ECR"
+  default     = "331174145079"
+}
+
+variable "repo_name" {
+  description = "ECR repository name"
+  default     = "flask-prediction-api"
 }
 
 variable "image_tag" {
-  description = "Docker image tag (passed from Jenkins)"
+  description = "Docker image tag pushed by Jenkins"
   default     = "latest"
 }
 
-variable "ecr_uri" {
-  default = "331174145079.dkr.ecr.ap-south-1.amazonaws.com/flask-prediction-api"
+variable "key_name" {
+  description = "EC2 key pair name for SSH access"
+  default     = "flask-keypair"  # Change to your actual key pair
 }

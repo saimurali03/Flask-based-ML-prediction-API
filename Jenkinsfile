@@ -3,68 +3,108 @@ pipeline {
 
     environment {
         // --- AWS Configuration ---
-        AWS_DEFAULT_REGION = 'ap-south-1'       // Change if using a different AWS region
-        ECR_REPO = 'flask-prediction-api'       // Your AWS ECR repository name
-        IMAGE_TAG = "v${BUILD_NUMBER}"          // Auto increments on every Jenkins build
-        ECR_URI = "331174145079.dkr.ecr.ap-south-1.amazonaws.com/flask-prediction-api" // Replace with your AWS account ID
+        AWS_ACCOUNT_ID = "331174145079"
+        AWS_REGION = "ap-south-1"
+
+        REPO_NAME = "flask-prediction-api"  // 🔹 Your AWS ECR repo name
+        IMAGE_TAG = "latest"
+        ECR_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${REPO_NAME}"
+
+        TF_DIR = "terraform"
     }
 
     stages {
 
         // 1️⃣ Checkout Code
-        stage('Checkout') {
+        stage('Checkout Code from GitHub') {
             steps {
-                git 'https://github.com/saimurali03/Flask-based-ML-prediction-API' // Replace with your repo URL
+                checkout scm
             }
         }
 
-        // 2️⃣ Train ML Model
-        stage('Train Model') {
+        // 2️⃣ Configure AWS Credentials
+        stage('Configure AWS Credentials') {
             steps {
-                bat 'python app/train_model.py'
-            }
-        }
-
-        // 3️⃣ Build Docker Image
-        stage('Build Docker Image') {
-            steps {
-                bat 'docker build -t $ECR_REPO:$IMAGE_TAG .'
-            }
-        }
-
-        // 4️⃣ Login to AWS ECR
-        stage('Login to ECR') {
-            steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                    bat '''
-                    aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_URI
-                    '''
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+                                  credentialsId: 'AWS-CREDS']]) {
+                    echo "✅ AWS Credentials Configured Successfully"
                 }
             }
         }
 
-        // 5️⃣ Push Docker Image to AWS ECR
-        stage('Push Image to ECR') {
+        // 3️⃣ Install Python Dependencies
+        stage('Install Dependencies') {
             steps {
-                bat '''
-                docker tag $ECR_REPO:$IMAGE_TAG $ECR_URI:$IMAGE_TAG
-                docker push $ECR_URI:$IMAGE_TAG
-                '''
+                bat """
+                    echo 📦 Installing Python Dependencies...
+                    pip install -r app\\requirements.txt
+                """
             }
         }
 
-        // 6️⃣ Deploy to AWS EC2 using Terraform
-        stage('Terraform Deploy') {
+        // 4️⃣ Train ML Model
+        stage('Train ML Model') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                    dir('terraform') {
-                        bat '''
+                bat """
+                    echo 🧠 Training Machine Learning Model...
+                    cd app
+                    python train_model.py
+                """
+            }
+        }
+
+        // 5️⃣ Login to AWS ECR
+        stage('Login to AWS ECR') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+                                  credentialsId: 'AWS-CREDS']]) {
+                    bat """
+                        echo 🔐 Logging into AWS ECR...
+
+                        aws configure set aws_access_key_id %AWS_ACCESS_KEY_ID%
+                        aws configure set aws_secret_access_key %AWS_SECRET_ACCESS_KEY%
+                        aws configure set default.region %AWS_REGION%
+
+                        aws ecr get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ECR_URL%
+                    """
+                }
+            }
+        }
+
+        // 6️⃣ Build Docker Image
+        stage('Build Docker Image') {
+            steps {
+                bat """
+                    echo 🐳 Building Docker Image...
+                    docker build --platform linux/amd64 -t ${REPO_NAME} .
+                    docker tag ${REPO_NAME}:latest %ECR_URL%:%IMAGE_TAG%
+                """
+            }
+        }
+
+        // 7️⃣ Push Docker Image to ECR
+        stage('Push Docker Image to AWS ECR') {
+            steps {
+                bat """
+                    echo 🚀 Pushing Docker Image to ECR...
+                    docker push %ECR_URL%:%IMAGE_TAG%
+                """
+            }
+        }
+
+        // 8️⃣ Deploy Infrastructure via Terraform
+        stage('Deploy with Terraform') {
+            steps {
+                dir("${TF_DIR}") {
+                    bat """
+                        echo 🧱 Initializing Terraform...
                         terraform init
-                        terraform apply -auto-approve \
-                            -var="image_tag=$IMAGE_TAG" \
-                            -var="ecr_uri=$ECR_URI"
-                        '''
-                    }
+
+                        echo 🌍 Applying Terraform Deployment...
+                        terraform apply -auto-approve ^
+                            -var="image_tag=%IMAGE_TAG%" ^
+                            -var="ecr_uri=%ECR_URL%"
+                    """
                 }
             }
         }
@@ -72,10 +112,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Deployment Successful! Visit your Flask app on AWS EC2."
+            echo "✅ Deployment Successful! Flask ML API is Live on AWS"
         }
         failure {
-            echo "❌ Deployment Failed. Check Jenkins logs."
+            echo "❌ Deployment Failed. Check Jenkins logs for details."
         }
     }
 }

@@ -1,17 +1,38 @@
-# Use lightweight Python base image
+#########################################
+# 🧠 Flask-based ML Prediction API Dockerfile
+#########################################
+
+# Use official Python image (lightweight)
 FROM python:3.9-slim
 
-# Set working directory
+# Set working directory inside container
 WORKDIR /app
 
-# Copy only the 'app' folder into the container
-COPY app /app
+#########################################
+# ✅ Install dependencies
+#########################################
 
-# Install dependencies
+# Copy requirement file
+COPY app/requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose port
+#########################################
+# ✅ Copy project files
+#########################################
+
+# Copy all code into container
+COPY app/ /app/
+
+#########################################
+# ✅ Expose Flask Port
+#########################################
+
 EXPOSE 5000
 
-# Run the Flask app
+#########################################
+# ✅ Run Flask app
+#########################################
+
 CMD ["python", "app.py"]
