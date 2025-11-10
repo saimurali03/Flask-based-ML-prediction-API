@@ -7,4 +7,4 @@ model = LinearRegression()
 model.fit(X, y)
 
 pickle.dump(model, open("model.pkl", "wb"))
-print("✅ Model trained and saved as model.pkl")
+print(" Model trained and saved as model.pkl")
