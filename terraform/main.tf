@@ -7,6 +7,42 @@ provider "aws" {
 }
 
 #########################################
+# ✅ Input Variables (from Jenkins)
+#########################################
+
+variable "aws_region" {
+  description = "AWS region to deploy in"
+  type        = string
+  default     = "ap-south-1"
+}
+
+variable "aws_account_id" {
+  description = "AWS account ID"
+  type        = string
+}
+
+variable "repo_name" {
+  description = "ECR repository name"
+  type        = string
+}
+
+variable "key_name" {
+  description = "EC2 key pair name for SSH access"
+  type        = string
+}
+
+variable "image_tag" {
+  description = "Docker image tag (from Jenkins)"
+  type        = string
+  default     = "latest"
+}
+
+variable "ecr_uri" {
+  description = "Full ECR URI passed dynamically from Jenkins"
+  type        = string
+}
+
+#########################################
 # ✅ Security Group for Flask App
 #########################################
 
@@ -48,7 +84,7 @@ resource "aws_security_group" "flask_sg" {
 #########################################
 
 resource "aws_instance" "flask_ec2" {
-  ami           = "ami-0305d3d91b9f22e84" # Ubuntu 20.04 (Check region AMI)
+  ami           = "ami-0305d3d91b9f22e84" # ✅ Ubuntu 20.04 AMI (for ap-south-1)
   instance_type = "t3.micro"
   key_name      = var.key_name
 
@@ -62,14 +98,26 @@ resource "aws_instance" "flask_ec2" {
               sudo systemctl enable docker
 
               # Login to AWS ECR
-              aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
+              aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.ecr_uri}
 
-              # Pull latest Docker image from ECR and run Flask app
-              docker pull ${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${var.repo_name}:${var.image_tag}
-              docker run -d -p 5000:5000 ${var.aws_account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${var.repo_name}:${var.image_tag}
+              # Pull latest Docker image and run Flask app
+              docker pull ${var.ecr_uri}:${var.image_tag}
+              docker run -d -p 5000:5000 ${var.ecr_uri}:${var.image_tag}
               EOF
 
   tags = {
     Name = "Flask-ML-Prediction-API"
   }
+}
+
+#########################################
+# ✅ Outputs (for Jenkins display)
+#########################################
+
+output "instance_public_ip" {
+  value = aws_instance.flask_ec2.public_ip
+}
+
+output "flask_app_url" {
+  value = "http://${aws_instance.flask_ec2.public_ip}:5000"
 }
