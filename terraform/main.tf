@@ -48,7 +48,7 @@ resource "aws_security_group" "flask_sg" {
 
 
 resource "aws_instance" "flask_ec2" {
-  ami           = "ami-0305d3d91b9f22e84" # Ubuntu 20.04 LTS (ap-south-1)
+  ami           = "ami-03695d52f0d883f65" # Ubuntu 20.04 LTS (ap-south-1)
   instance_type = "t3.micro"
   key_name      = var.key_name
 
