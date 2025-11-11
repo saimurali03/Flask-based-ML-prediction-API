@@ -8,7 +8,7 @@ pipeline {
 
         REPO_NAME = "flask-prediction-api"  // 🔹 Your AWS ECR repo name
         IMAGE_TAG = "latest"
-        ECR_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${REPO_NAME}"
+        ECR_URL = "public.ecr.aws/a8f4x2n0/flask-prediction-api"
 
         TF_DIR = "terraform"
     }
