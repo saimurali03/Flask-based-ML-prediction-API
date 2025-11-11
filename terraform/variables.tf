@@ -35,5 +35,5 @@ variable "key_name" {
 variable "ecr_uri" {
   description = "Full ECR URI (passed from Jenkins)"
   type        = string
-  default     = "331174145079.dkr.ecr.ap-south-1.amazonaws.com/flask-prediction-api"
+  default     = "public.ecr.aws/a8f4x2n0/flask-prediction-api"
 }
