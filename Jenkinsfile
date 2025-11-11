@@ -94,16 +94,19 @@ pipeline {
         // 8️⃣ Deploy Infrastructure via Terraform
         stage('Deploy with Terraform') {
             steps {
-                dir('terraform') {
-                    bat '''
-                        terraform init -no-color
-                        terraform apply -auto-approve -no-color \
-                        -var "image_tag=${IMAGE_TAG}" \
-                        -var "ecr_uri=${ECR_URL}"
-                    '''
+                withAWS(credentials: 'AWS-CREDS', region: 'ap-south-1') {
+                    dir('terraform') {
+                        bat '''
+                            terraform init -no-color
+                            terraform apply -auto-approve -no-color \
+                            -var "image_tag=${IMAGE_TAG}" \
+                            -var "ecr_uri=${ECR_URL}"
+                        '''
+                    }
                 }
             }
         }
+
 
     }
 
