@@ -54,22 +54,18 @@ pipeline {
         }
 
         // 5️⃣ Login to AWS ECR
-        stage('Login to AWS ECR') {
-            steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
-                                  credentialsId: 'AWS-CREDS']]) {
-                    bat """
-                        echo 🔐 Logging into AWS ECR...
-
-                        aws configure set aws_access_key_id %AWS_ACCESS_KEY_ID%
-                        aws configure set aws_secret_access_key %AWS_SECRET_ACCESS_KEY%
-                        aws configure set default.region %AWS_REGION%
-
-                        aws ecr get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ECR_URL%
-                    """
+            stage('Login to AWS ECR') {
+                steps {
+                    withAWS(credentials: 'AWS-CREDS', region: 'ap-south-1') {
+                        bat '''
+                            echo "🔐 Logging into AWS Public ECR..."
+                            aws ecr-public get-login-password --region ap-south-1 | \
+                            docker login --username AWS --password-stdin public.ecr.aws/a8f4x2n0
+                        '''
+                    }
                 }
             }
-        }
+
 
         // 6️⃣ Build Docker Image
         stage('Build Docker Image') {
