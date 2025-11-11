@@ -96,15 +96,15 @@ pipeline {
             steps {
                 dir('terraform') {
                     bat '''
-                    echo Initializing Terraform...
-                    terraform init -no-color
-
-                    echo Applying Terraform Deployment...
-                    terraform apply -auto-approve -no-color -var "image_tag=%IMAGE_TAG%" -var "ecr_uri=%ECR_URL%"
+                        terraform init -no-color
+                        terraform apply -auto-approve -no-color \
+                        -var "image_tag=${IMAGE_TAG}" \
+                        -var "ecr_uri=${ECR_URL}"
                     '''
                 }
             }
         }
+
     }
 
     post {
