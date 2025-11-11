@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        // --- AWS Configuration ---
         AWS_ACCOUNT_ID = "331174145079"
-        AWS_REGION = "ap-south-1"
+        AWS_REGION = "us-east-1" // Public ECR must use us-east-1
+        TF_AWS_REGION = "ap-south-1" // EC2 deployment region
 
-        REPO_NAME = "flask-prediction-api"  // 🔹 Your AWS ECR repo name
+        REPO_NAME = "flask-prediction-api"
         IMAGE_TAG = "latest"
         ECR_URL = "public.ecr.aws/a8f4x2n0/flask-prediction-api"
 
@@ -14,25 +14,20 @@ pipeline {
     }
 
     stages {
-
-        // 1️⃣ Checkout Code
         stage('Checkout Code from GitHub') {
             steps {
                 checkout scm
             }
         }
 
-        // 2️⃣ Configure AWS Credentials
         stage('Configure AWS Credentials') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
-                                  credentialsId: 'AWS-CREDS']]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS-CREDS']]) {
                     echo "✅ AWS Credentials Configured Successfully"
                 }
             }
         }
 
-        // 3️⃣ Install Python Dependencies
         stage('Install Dependencies') {
             steps {
                 bat """
@@ -42,7 +37,6 @@ pipeline {
             }
         }
 
-        // 4️⃣ Train ML Model
         stage('Train ML Model') {
             steps {
                 bat """
@@ -53,32 +47,27 @@ pipeline {
             }
         }
 
-        // 5️⃣ Login to AWS ECR
-            stage('Login to AWS ECR') {
-                steps {
-                    withAWS(credentials: 'AWS-CREDS', region: 'ap-south-1') {
-                        bat '''
-                            echo "🔐 Logging into AWS Public ECR..."
-                            aws ecr-public get-login-password --region ap-south-1 | \
-                            docker login --username AWS --password-stdin public.ecr.aws/a8f4x2n0
-                        '''
-                    }
+        stage('Login to AWS ECR') {
+            steps {
+                withAWS(credentials: 'AWS-CREDS', region: 'us-east-1') {
+                    bat '''
+                        echo 🔐 Logging into AWS Public ECR...
+                        aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/a8f4x2n0
+                    '''
                 }
             }
+        }
 
-
-        // 6️⃣ Build Docker Image
         stage('Build Docker Image') {
             steps {
                 bat """
                     echo 🐳 Building Docker Image...
-                    docker build --platform linux/amd64 -t ${REPO_NAME} .
-                    docker tag ${REPO_NAME}:latest %ECR_URL%:%IMAGE_TAG%
+                    docker build --platform linux/amd64 -t %REPO_NAME% .
+                    docker tag %REPO_NAME%:latest %ECR_URL%:%IMAGE_TAG%
                 """
             }
         }
 
-        // 7️⃣ Push Docker Image to ECR
         stage('Push Docker Image to AWS ECR') {
             steps {
                 bat """
@@ -87,23 +76,19 @@ pipeline {
                 """
             }
         }
-        // 8️⃣ Deploy Infrastructure via Terraform
+
         stage('Deploy with Terraform') {
             steps {
                 withAWS(credentials: 'AWS-CREDS', region: 'ap-south-1') {
                     dir('terraform') {
-                        bat '''
+                        bat """
                             terraform init -no-color
-                            terraform apply -auto-approve -no-color \
-                            -var "image_tag=${IMAGE_TAG}" \
-                            -var "ecr_uri=${ECR_URL}"
-                        '''
+                            terraform apply -auto-approve -no-color -var "image_tag=%IMAGE_TAG%" -var "ecr_uri=%ECR_URL%"
+                        """
                     }
                 }
             }
         }
-
-
     }
 
     post {
